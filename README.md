@@ -1,2 +1,3 @@
-# Bitcoin-Thieves-Lottery
-Bitcoin Thieves' Lottery
+# Bitcoin Thieves' Lottery
+
+University Project.
