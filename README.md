@@ -6,7 +6,7 @@ University Project.
 
 ```shell
 python3 -m venv .venv
-source .pyenv/bin/activate  # On entre dans l'env
+source .venv/bin/activate  # On entre dans l'env
 
 pip3 install -r requirements.txt
 ```
