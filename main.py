@@ -4,14 +4,18 @@ from bitcoinaddress import Wallet
 import pandas as pd
 import requests
 
+print("Import datas.")
 # utxos.csv généré par <https://github.com/in3rsha/bitcoin-utxo-dump>
 df_data = pd.read_csv('utxos.csv')
 df_sorted = df_data.sort_values('address')
 
 def check_wallet():
+    print("Start brute force.")
+    tested_private_keys = 0
     while True:
         # Générer une nouvelle adresse dans plusieurs formats
-        wallet = Wallet('9cea6dc004acfe623abcdad9085388497da023cac6a7d1a2d44fddd72a797fec')
+        wallet = Wallet()
+        #wallet = Wallet('9cea6dc004acfe623abcdad9085388497da023cac6a7d1a2d44fddd72a797fec')
         address1 = wallet.address.mainnet.pubaddr1
         address1c = wallet.address.mainnet.pubaddr1c
         address3 = wallet.address.mainnet.pubaddr3
@@ -21,10 +25,8 @@ def check_wallet():
         # Liste des adresses à vérifier
         addresses = [address1, address1c, address3, addressP2WPKH, address1P2WSH]
 
-        count_comparaisons = 0
         # On teste la correspondance de notre adresse avec toutes celles du DataFrame
         for address in addresses:
-            count_comparaisons += 1
             matching_rows = df_sorted[df_sorted['address'] == address]
 
             # Si l'adresse générée correspond à une adresse dans le DataFrame
@@ -48,10 +50,12 @@ def check_wallet():
 
                 return
         
-        return count_comparaisons
+        tested_private_keys += 1
+        if tested_private_keys % 10 == 0:
+            print(f"{tested_private_keys} tested private keys...")
 
 check_wallet()
 
 # Test with:
-# Private key: Wallet('9cea6dc004acfe623abcdad9085388497da023cac6a7d1a2d44fddd72a797fec')
+# Private key: 9cea6dc004acfe623abcdad9085388497da023cac6a7d1a2d44fddd72a797fec
 # Transaction: 2263674,40492c8b1984b40b2e6098642445691354a583ae7242f37bbc8203e1c941e80a,2,57225,0,218,73d3c582ea649e303e7aae819116ab5ec4f6970f,p2pkh,1GLPoStEnCDYfPokWkQ5HXjoXbFZpmSkKy
