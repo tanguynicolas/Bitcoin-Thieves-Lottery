@@ -1,21 +1,24 @@
 import concurrent.futures
-
+import threading
 from bitcoinaddress import Wallet
 import pandas as pd
 import requests
 
 print("Import datas.")
 # utxos.csv généré par <https://github.com/in3rsha/bitcoin-utxo-dump>
-df_data = pd.read_csv('utxos.csv')
-df_sorted = df_data.sort_values('address')
+df_data = pd.read_csv('../utxodump.csv')
+print('Create dictionnary...')
+address_amount_dict = dict(zip(df_data['address'], df_data['amount']))
+print('Finish to create dictionnary')
+total_tested_private_keys = 0
+lock = threading.Lock()
 
-def check_wallet():
-    print("Start brute force.")
+def check_wallet(): 
+    global total_tested_private_keys
     tested_private_keys = 0
     while True:
         # Générer une nouvelle adresse dans plusieurs formats
         wallet = Wallet()
-        #wallet = Wallet('9cea6dc004acfe623abcdad9085388497da023cac6a7d1a2d44fddd72a797fec')
         address1 = wallet.address.mainnet.pubaddr1
         address1c = wallet.address.mainnet.pubaddr1c
         address3 = wallet.address.mainnet.pubaddr3
@@ -27,17 +30,10 @@ def check_wallet():
 
         # On teste la correspondance de notre adresse avec toutes celles du DataFrame
         for address in addresses:
-            matching_rows = df_sorted[df_sorted['address'] == address]
-
-            # Si l'adresse générée correspond à une adresse dans le DataFrame
-            if not matching_rows.empty:
-                print(f'🏆 Address {address} match!')
-
-                print(wallet)
-
+            if address in address_amount_dict:
                 # Affichage du nombre de BTC de l'adresse
-                amount = float(matching_rows['amount'].values[0])
-                print(f"💸 This address has: ₿{amount}")
+                amount = float(address_amount_dict[address])
+                print("💸 Find {address} : ₿{amount}\n")
 
                 # Affichage du cours actuel du BTC en dollar
                 response = requests.get("http://api.coindesk.com/v1/bpi/currentprice.json")
@@ -47,14 +43,29 @@ def check_wallet():
 
                 # Affichage de la valeur au cours en dollar
                 print(f"💰 This private key is worth: ${rate * amount}")
-
-                return
+                
+                with lock:
+                    with open('resultat.txt', 'a') as f:
+                        f.write(f'Address {address} match!\n')
+                        f.write(str(wallet) + '\n')
+                        f.write(f"This address has: ₿{amount/1000000}\n")
+                        f.write(f"The current price of BTC is: ${rate}\n")
+                        f.write(f"This private key is worth: ${rate * (amount/1000000)}\n")
         
         tested_private_keys += 1
-        if tested_private_keys % 10 == 0:
-            print(f"{tested_private_keys} tested private keys...")
+        with lock:
+            total_tested_private_keys += 1
 
-check_wallet()
+        if total_tested_private_keys % 100 == 0:
+            print(f"Total tested private keys: {total_tested_private_keys}")
+
+
+print("Initialize threads")
+num_threads = 16
+with concurrent.futures.ThreadPoolExecutor(max_workers=num_threads) as executor:
+    for _ in range(num_threads):
+        executor.submit(check_wallet)
+        print(f"Start brute force for thread : {_}")
 
 # Test with:
 # Private key: 9cea6dc004acfe623abcdad9085388497da023cac6a7d1a2d44fddd72a797fec
